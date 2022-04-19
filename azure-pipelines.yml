@@ -5,7 +5,7 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  - group: VAR_LEGACYWAITLIST
+  - group: Images Service
   - name: DOCKER_REPOSITORY
     value: $(ACR_ACC_ID).azurecr.io/$(ACR_ACC_ID)
 
