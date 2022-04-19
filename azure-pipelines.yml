@@ -19,7 +19,7 @@ steps:
   inputs:
     repository: $(DOCKER_REPOSITORY)
     command: 'buildAndPush'
-    Dockerfile: 'docker/Dockerfile'
+    Dockerfile: 'docker/alpine.Dockerfile'
     tags: |
       $(Build.BuildId)
 
