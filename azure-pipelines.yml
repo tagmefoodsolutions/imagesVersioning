@@ -1,0 +1,25 @@
+trigger:
+  - 5.x
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: VAR_LEGACYWAITLIST
+  - name: DOCKER_REPOSITORY
+    value: $(ACR_ACC_ID).azurecr.io/$(ACR_ACC_ID)
+
+steps:
+
+- script: |
+    docker login $(ACR_ACC_ID).azurecr.io --username $(ACR_USER) --password $(ACR_PASS)
+  displayName: 'Login to ACR'
+
+- task: Docker@2
+  inputs:
+    repository: $(DOCKER_REPOSITORY)
+    command: 'buildAndPush'
+    Dockerfile: 'Dockerfile'
+    tags: |
+      $(Build.BuildId)
+
