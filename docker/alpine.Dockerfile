@@ -1,20 +1,15 @@
 # Based on:
 # https://hg.nginx.org/pkg-oss/file/tip/alpine/Makefile
 # https://github.com/nginxinc/docker-nginx/blob/master/mainline/alpine/Dockerfile
-FROM alpine:3.15
+FROM alpine:3.17
 
 LABEL maintainer="Kleis Auke Wolthuizen <info@kleisauke.nl>"
 
-ARG NGINX_VERSION=1.21.6
+ARG NGINX_VERSION=1.23.3
 
 # Copy the contents of this repository to the container
 COPY . /var/www/imagesweserv
 WORKDIR /var/www/imagesweserv
-
-# Set default timezone (can be overridden with -e "TZ=Continent/City")
-ENV TZ=Europe/Amsterdam \
-    # Increase the minimum stack size to 2MB
-    VIPS_MIN_STACK_SIZE=2m
 
 # Create nginx user/group first, to be consistent throughout docker variants
 RUN addgroup -g 101 -S nginx \
@@ -55,9 +50,11 @@ RUN addgroup -g 101 -S nginx \
     && apk add --no-cache \
         openssl \
         pcre2 \
-        vips \
-    # Bring in tzdata so users could set the timezones through the environment
-    # variables
+        vips-cpp \
+        vips-heif \
+        vips-magick \
+        vips-poppler \
+    # Bring in tzdata so users could set the timezones through the environment variables
     && apk add --no-cache tzdata \
     # Ensure nginx cache directory exist with the correct permissions
     && mkdir -m 700 /var/cache/nginx \
@@ -66,6 +63,11 @@ RUN addgroup -g 101 -S nginx \
     && ln -sf /dev/stderr /var/log/nginx/weserv-error.log \
     # Copy nginx configuration to the appropriate location
     && cp ngx_conf/*.conf /etc/nginx
+
+# Set default timezone (can be overridden with -e "TZ=Continent/City")
+ENV TZ=Europe/Amsterdam \
+    # Increase the minimum stack size to 2MB
+    VIPS_MIN_STACK_SIZE=2m
 
 EXPOSE 80
 

@@ -5,7 +5,6 @@ use Test::Nginx::Util qw($ServerPort $ServerAddr);
 
 plan tests => repeat_each() * (blocks() * 5);
 
-$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 $ENV{TEST_NGINX_URI} = "http://$ServerAddr:$ServerPort";
 
 our $HttpConfig = qq{
@@ -59,3 +58,4 @@ Content-Type: application/json
 [error]
 --- no_error_log
 [warn]
+--- skip_eval: 5: system("$NginxBinary -V 2>&1 | grep -- 'echo_nginx_module'") ne 0

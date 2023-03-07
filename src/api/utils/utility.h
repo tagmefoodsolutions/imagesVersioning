@@ -2,7 +2,9 @@
 
 #include "../enums.h"
 
+#include <algorithm>
 #include <cmath>
+#include <ctime>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -10,9 +12,7 @@
 #include <vips/vips8>
 #include <weserv/enums.h>
 
-namespace weserv {
-namespace api {
-namespace utils {
+namespace weserv::api::utils {
 
 using enums::ImageType;
 using enums::Output;
@@ -120,37 +120,6 @@ inline VipsAngle resolve_angle_rotation(const int angle) {
 }
 
 /**
- * Backport of `std::clamp` from C++17.
- * @tparam T Comparison type.
- * @tparam Comparator Comparison function type.
- * @param v The value to be clamped.
- * @param lo The lower bound of the result.
- * @param hi The upper bound of the result.
- * @param comp Comparison function object.
- * @return Reference to lo if v is less than lo, reference to hi if hi is less
- * than hi, otherwise reference to v.
- */
-template <typename T, typename Comparator>
-inline constexpr const T &clamp(const T &v, const T &lo, const T &hi,
-                                Comparator comp) {
-    return comp(v, lo) ? lo : comp(hi, v) ? hi : v;
-}
-
-/**
- * Backport of `std::clamp` from C++17.
- * @tparam T Comparison type.
- * @param v The value to be clamped.
- * @param lo The lower bound of the result.
- * @param hi The upper bound of the result.
- * @return Reference to lo if v is less than lo, reference to hi if hi is less
- * than hi, otherwise reference to v.
- */
-template <typename T>
-inline constexpr const T &clamp(const T &v, const T &lo, const T &hi) {
-    return clamp(v, lo, hi, std::less<T>());
-}
-
-/**
  * Determine image extension from the output enum.
  * @note The return value also defines which extension is allowed to
  *       pass on to the selected save operation.
@@ -212,7 +181,7 @@ inline std::string supported_savers_string(const uintptr_t msk) {
  */
 static void image_eval_cb(VipsImage *image, VipsProgress *progress,
                           time_t *timeout) {
-    if (*timeout > 0 && progress->run >= *timeout) {
+    if (*timeout > 0 && progress->run >= *timeout) {  // LCOV_EXCL_START
         vips_image_set_kill(image, 1);
         vips_error(
             "weserv",
@@ -224,7 +193,7 @@ static void image_eval_cb(VipsImage *image, VipsProgress *progress,
         // We've killed the image and issued an error, it's now our caller's
         // responsibility to pass the message up the chain.
         *timeout = 0;
-    }
+    }  // LCOV_EXCL_STOP
 }
 
 /**
@@ -416,7 +385,7 @@ calculate_position(const int in_width, const int in_height, const int out_width,
             top = out_height - in_height;
             break;
         case Position::TopLeft:
-            // Which is the default is 0,0 so we do not assign anything here
+            // Do not assign anything here; the default is 0,0
             break;
         default:
             // Centre
@@ -424,7 +393,7 @@ calculate_position(const int in_width, const int in_height, const int out_width,
             top = (out_height - in_height) / 2;
     }
 
-    return std::make_pair(left, top);
+    return std::pair{left, top};
 }
 
 /**
@@ -486,12 +455,12 @@ calculate_focal_point(const float fpx, const float fpy, const int in_width,
     auto center_y = (fpy * in_height) / factor;
 
     auto left = static_cast<int>(std::round(center_x - target_width / 2.0));
-    left = clamp(left, 0, image_width - target_width);
+    left = std::clamp(left, 0, image_width - target_width);
 
     auto top = static_cast<int>(std::round(center_y - target_height / 2.0));
-    top = clamp(top, 0, image_height - target_height);
+    top = std::clamp(top, 0, image_height - target_height);
 
-    return std::make_pair(left, top);
+    return std::pair{left, top};
 }
 
 /**
@@ -595,6 +564,4 @@ inline std::string escape_string(const std::string &s) {  // LCOV_EXCL_START
 }
 // LCOV_EXCL_STOP
 
-}  // namespace utils
-}  // namespace api
-}  // namespace weserv
+}  // namespace weserv::api::utils

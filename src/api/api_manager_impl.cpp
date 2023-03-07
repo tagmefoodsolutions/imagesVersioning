@@ -31,8 +31,7 @@
 
 #include <vips/vips8>
 
-namespace weserv {
-namespace api {
+namespace weserv::api {
 
 using io::Source;
 using io::Target;
@@ -53,7 +52,7 @@ ApiManagerFactory::create_api_manager(std::unique_ptr<ApiEnvInterface> env) {
  */
 void vips_warning_callback(const char * /*unused*/, GLogLevelFlags /*unused*/,
                            const char *message, void *user_data) {
-    auto env = static_cast<ApiEnvInterface *>(user_data);
+    auto *env = static_cast<ApiEnvInterface *>(user_data);
 
     // Log libvips warnings
     env->log_warning("libvips warning: " + std::string(message));
@@ -104,24 +103,23 @@ Status ApiManagerImpl::exception_handler(const std::string &query) {
         env_->log_info("Stream contains unsupported image format. Cause: " +
                        std::string(e.what()) + "\nQuery: " + query);
 
-        return Status(
-            Status::Code::InvalidImage,
-            "Invalid or unsupported image format. Is it a valid image?",
-            Status::ErrorCause::Application);
+        return {Status::Code::InvalidImage,
+                "Invalid or unsupported image format. Is it a valid image?",
+                Status::ErrorCause::Application};
     } catch (const exceptions::UnreadableImageException &e) {
         // Log image not readable errors
         env_->log_error("Image has a corrupt header. Cause: " +
                         std::string(e.what()) + "\nQuery: " + query);
 
-        return Status(Status::Code::ImageNotReadable,
-                      "Image not readable. Is it a valid image?",
-                      Status::ErrorCause::Application);
+        return {Status::Code::ImageNotReadable,
+                "Image not readable. Is it a valid image?",
+                Status::ErrorCause::Application};
     } catch (const exceptions::TooLargeImageException &e) {
-        return Status(Status::Code::ImageTooLarge, e.what(),
-                      Status::ErrorCause::Application);
+        return {Status::Code::ImageTooLarge, e.what(),
+                Status::ErrorCause::Application};
     } catch (const exceptions::UnsupportedSaverException &e) {
-        return Status(Status::Code::UnsupportedSaver, e.what(),
-                      Status::ErrorCause::Application);
+        return {Status::Code::UnsupportedSaver, e.what(),
+                Status::ErrorCause::Application};
     } catch (const VError &e) {
         std::string error_str = e.what();
 
@@ -133,17 +131,17 @@ Status ApiManagerImpl::exception_handler(const std::string &query) {
             error_str = error_str.substr(8, error_str.find('\n') - 8);
         }
 
-        return Status(Status::Code::LibvipsError,
-                      "libvips error: " + utils::escape_string(error_str),
-                      Status::ErrorCause::Application);
+        return {Status::Code::LibvipsError,
+                "libvips error: " + utils::escape_string(error_str),
+                Status::ErrorCause::Application};
     } catch (const std::exception &e) {  // LCOV_EXCL_START
         auto error_str = "unknown error: " + std::string(e.what());
 
         // Log unknown errors
         env_->log_error(error_str + "\nQuery: " + query);
 
-        return Status(Status::Code::Unknown, error_str,
-                      Status::ErrorCause::Application);
+        return {Status::Code::Unknown, error_str,
+                Status::ErrorCause::Application};
     }
     // LCOV_EXCL_STOP
 }
@@ -288,5 +286,4 @@ utils::Status ApiManagerImpl::process_buffer(const std::string &query,
     }
 }
 
-}  // namespace api
-}  // namespace weserv
+}  // namespace weserv::api

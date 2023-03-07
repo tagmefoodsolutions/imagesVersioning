@@ -12,8 +12,7 @@
 using ::weserv::api::enums::Output;
 using ::weserv::api::utils::Status;
 
-namespace weserv {
-namespace nginx {
+namespace weserv::nginx {
 
 namespace {
 /**
@@ -82,6 +81,10 @@ ngx_conf_num_bounds_t ngx_weserv_avif_effort_bounds = {
 
 ngx_conf_num_bounds_t ngx_weserv_gif_effort_bounds = {
     ngx_conf_check_num_bounds, 1, 10
+};
+
+ngx_conf_num_bounds_t ngx_weserv_webp_effort_bounds = {
+    ngx_conf_check_num_bounds, 0, 6
 };
 
 ngx_conf_num_bounds_t ngx_weserv_zlib_level_bounds = {
@@ -252,6 +255,14 @@ ngx_command_t ngx_weserv_commands[] = {
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_weserv_loc_conf_t, api_conf.gif_effort),
      &ngx_weserv_gif_effort_bounds},
+
+    {ngx_string("weserv_webp_effort"),
+     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF |
+         NGX_HTTP_LIF_CONF | NGX_CONF_TAKE1,
+     ngx_conf_set_num_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_weserv_loc_conf_t, api_conf.webp_effort),
+     &ngx_weserv_webp_effort_bounds},
 
     {ngx_string("weserv_zlib_level"),
      NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF |
@@ -467,6 +478,7 @@ void *ngx_weserv_create_loc_conf(ngx_conf_t *cf) {
     lc->api_conf.webp_quality = NGX_CONF_UNSET;
     lc->api_conf.avif_effort = NGX_CONF_UNSET;
     lc->api_conf.gif_effort = NGX_CONF_UNSET;
+    lc->api_conf.webp_effort = NGX_CONF_UNSET;
     lc->api_conf.zlib_level = NGX_CONF_UNSET;
     lc->api_conf.fail_on_error = NGX_CONF_UNSET;
 
@@ -492,7 +504,7 @@ char *ngx_weserv_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child) {
 
     ngx_conf_merge_str_value(conf->user_agent, prev->user_agent,
                              "Mozilla/5.0 (compatible; ImageFetcher/9.0; "
-                             "+http://images.weserv.nl/)");
+                             "+http://wsrv.nl/)");
 
     // Max image size to process is 100 MiB by default
     ngx_conf_merge_size_value(conf->max_size, prev->max_size,
@@ -542,6 +554,8 @@ char *ngx_weserv_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child) {
                          4);
     ngx_conf_merge_value(conf->api_conf.gif_effort, prev->api_conf.gif_effort,
                          7);
+    ngx_conf_merge_value(conf->api_conf.webp_effort, prev->api_conf.webp_effort,
+                         4);
     ngx_conf_merge_value(conf->api_conf.zlib_level, prev->api_conf.zlib_level,
                          6);
 
@@ -550,7 +564,7 @@ char *ngx_weserv_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child) {
     ngx_conf_merge_value(conf->api_conf.fail_on_error,
                          prev->api_conf.fail_on_error, 0);
 
-    return reinterpret_cast<char *>(NGX_CONF_OK);
+    return NGX_CONF_OK;
 }
 
 /**
@@ -821,7 +835,7 @@ ngx_int_t ngx_weserv_image_body_filter(ngx_http_request_t *r, ngx_chain_t *in) {
     r->connection->buffered &= ~NGX_WESERV_IMAGE_BUFFERED;
 
     // We release the memory as soon as the output of an image is finished
-    // and don't wait for an entire response to be sent to the client.
+    // and don't wait for an entire response to be sent to the client
     ngx_weserv_image_filter_free_buf(r, ctx);
 
     if (!status.ok()) {
@@ -877,8 +891,7 @@ ngx_int_t ngx_weserv_postconfiguration(ngx_conf_t *cf) {
 
 }  // namespace
 
-}  // namespace nginx
-}  // namespace weserv
+}  // namespace weserv::nginx
 
 /**
  * The module definition, referenced from the 'config' file.

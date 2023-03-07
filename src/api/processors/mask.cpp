@@ -10,9 +10,7 @@
 #include <stdexcept>
 #include <tuple>
 
-namespace weserv {
-namespace api {
-namespace processors {
+namespace weserv::api::processors {
 
 using enums::MaskType;
 using parsers::Color;
@@ -149,10 +147,9 @@ std::string Mask::svg_path_by_type(const int width, const int height,
 
     std::string path = transformed_path_string(coordinates, mask_transl, scale);
 
-    // If an odd number of points, add an additional point at the top of the
-    // polygon this will shift the calculated center point of the shape so that
-    // the center point of the polygon is at x,y (otherwise the center is
-    // mis-located)
+    // If an odd number of points, add a point at the top of the polygon; this
+    // will shift the calculated center point of the shape so that the center
+    // point of the polygon is at x,y (otherwise the center is mis-located)
     if (points % 2 == 1) {
         path = "M0 " + std::to_string(outer_radius) + " " + path;
     }
@@ -256,7 +253,7 @@ Mask::translation_and_scaling(const int image_width, const int image_height,
     *mask_width = static_cast<int>(std::round(scaled_mask_width));
     *mask_height = static_cast<int>(std::round(scaled_mask_height));
 
-    return std::make_pair(mask_transl, scale);
+    return std::pair{mask_transl, scale};
 }
 
 std::string
@@ -295,7 +292,7 @@ VImage Mask::process(const VImage &image) const {
     auto page_height =
         n_pages > 1 ? query_->get<int>("page_height") : image_height;
 
-    auto preserve_aspect_ratio =
+    const auto *preserve_aspect_ratio =
         mask_type == MaskType::Ellipse ? "none" : "xMidYMid meet";
 
     int x_min, y_min, mask_width, mask_height;
@@ -371,8 +368,8 @@ VImage Mask::process(const VImage &image) const {
     }
 
     // Crop the image to the mask dimensions:
-    //  - if the mask type is not an ellipse;
-    //  - trimming is needed.
+    //  - if the mask type is not an ellipse
+    //  - trimming is needed
     if (mask_type != MaskType::Ellipse &&
         (mask_width < image_width || mask_height < page_height) &&
         query_->get<bool>("mtrim", false)) {
@@ -395,6 +392,4 @@ VImage Mask::process(const VImage &image) const {
     return output_image;
 }
 
-}  // namespace processors
-}  // namespace api
-}  // namespace weserv
+}  // namespace weserv::api::processors

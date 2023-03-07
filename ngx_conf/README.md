@@ -49,10 +49,10 @@ time, the connection is closed.
 
 ### `weserv_user_agent`
 
-| syntax:      | `weserv_user_agent <user_agent>`                                        |
-| :----------- | :---------------------------------------------------------------------- |
-| **default:** | `Mozilla/5.0 (compatible; ImageFetcher/9.0; +http://images.weserv.nl/)` |
-| **context:** | `http`, `server`, `location`, `if in location`                          |
+| syntax:      | `weserv_user_agent <user_agent>`                               |
+| :----------- | :------------------------------------------------------------- |
+| **default:** | `Mozilla/5.0 (compatible; ImageFetcher/9.0; +http://wsrv.nl/)` |
+| **context:** | `http`, `server`, `location`, `if in location`                 |
 
 Configures the User-Agent header that will be sent to a remote server.
 
@@ -217,6 +217,16 @@ values are in the range from 0 (fastest/largest) to 9 (slowest/smallest).
 
 Controls the CPU effort spent on improving GIF compression. Acceptable
 values are in the range from 1 (fastest/largest) to 10 (slowest/smallest).
+
+### `weserv_webp_effort`
+
+| syntax:      | `weserv_webp_effort <effort>`                  |
+| :----------- |:-----------------------------------------------|
+| **default:** | `4`                                            |
+| **context:** | `http`, `server`, `location`, `if in location` |
+
+Controls the CPU effort spent on improving WebP compression. Acceptable
+values are in the range from 0 (fastest/largest) to 6 (slowest/smallest).
 
 ### `weserv_zlib_level`
 

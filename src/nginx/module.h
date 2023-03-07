@@ -16,8 +16,7 @@ extern "C" {
 #define NGX_WESERV_PROXY_MODE 0
 #define NGX_WESERV_FILTER_MODE 1
 
-namespace weserv {
-namespace nginx {
+namespace weserv::nginx {
 
 /**
  * weserv Module Configuration - main context.
@@ -61,7 +60,7 @@ struct ngx_weserv_loc_conf_t {
  */
 struct ngx_weserv_base_ctx_t {
     /**
-     * Make a polymorphic type
+     * Make a polymorphic type.
      */
     virtual ~ngx_weserv_base_ctx_t() = default;
 
@@ -141,7 +140,6 @@ struct ngx_weserv_upstream_ctx_t : ngx_weserv_base_ctx_t {
 #endif
 };
 
-}  // namespace nginx
-}  // namespace weserv
+}  // namespace weserv::nginx
 
 extern ngx_module_t ngx_weserv_module;

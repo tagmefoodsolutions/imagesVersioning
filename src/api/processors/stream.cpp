@@ -11,10 +11,9 @@
 #include <cstdint>
 #include <functional>
 #include <tuple>
+#include <vector>
 
-namespace weserv {
-namespace api {
-namespace processors {
+namespace weserv::api::processors {
 
 using enums::ImageType;
 using enums::Output;
@@ -94,19 +93,19 @@ Stream::get_page_load_options(const Source &source,
         0);
 
     if (page != -1 && page != -2) {
-        return std::make_pair(n, page);
+        return std::pair{n, page};
     }
 
     if (page == -1) {
-        page = resolve_page(source, loader, std::greater<uint64_t>());
+        page = resolve_page(source, loader, std::greater<>());
     } else {  // page == -2
-        page = resolve_page(source, loader, std::less<uint64_t>());
+        page = resolve_page(source, loader, std::less<>());
     }
 
     // Update page according to new value
     query_->update("page", page);
 
-    return std::make_pair(n, page);
+    return std::pair{n, page};
 }
 
 VImage Stream::new_from_source(const Source &source, const std::string &loader,
@@ -149,8 +148,8 @@ void Stream::resolve_dimensions() const {
 
     // Update the width and height parameters,
     // a dimension needs to be d >= 0 && d <= VIPS_MAX_COORD.
-    query_->update("w", utils::clamp(width, 0, VIPS_MAX_COORD));
-    query_->update("h", utils::clamp(height, 0, VIPS_MAX_COORD));
+    query_->update("w", std::clamp(width, 0, VIPS_MAX_COORD));
+    query_->update("h", std::clamp(height, 0, VIPS_MAX_COORD));
 }
 
 void Stream::resolve_rotation_and_flip(const VImage &image) const {
@@ -354,6 +353,14 @@ void Stream::append_save_options<Output::Webp>(vips::VOption *options) const {
 
     // Set quality (default is 80)
     options->set("Q", quality);
+
+#if VIPS_VERSION_AT_LEAST(8, 12, 0)
+    // Control the CPU effort spent on improving compression (default 4)
+    options->set("effort", static_cast<int>(config_.webp_effort));
+#else
+    // Prior to libvips 8.12 this was named as "reduction_effort"
+    options->set("reduction_effort", static_cast<int>(config_.webp_effort));
+#endif
 }
 
 template <>
@@ -373,8 +380,11 @@ void Stream::append_save_options<Output::Avif>(vips::VOption *options) const {
     // Set compression format to AV1
     options->set("compression", VIPS_FOREIGN_HEIF_COMPRESSION_AV1);
 
-#if VIPS_VERSION_AT_LEAST(8, 10, 2)
+#if VIPS_VERSION_AT_LEAST(8, 12, 0)
     // Control the CPU effort spent on improving compression (default 4)
+    options->set("effort", static_cast<int>(config_.avif_effort));
+#elif VIPS_VERSION_AT_LEAST(8, 10, 2)
+    // Prior to libvips 8.12 this was named as "speed"
     options->set("speed", 9 - static_cast<int>(config_.avif_effort));
 #endif
 }
@@ -498,7 +508,7 @@ void Stream::write_to_target(const VImage &image, const Target &target) const {
 
         target.setup(extension);
         target.write(out.c_str(), out.size());
-        target.finish();
+        target.end();
     } else {
         // Strip all metadata (EXIF, XMP, IPTC).
         // (all savers supports this option)
@@ -522,13 +532,11 @@ void Stream::write_to_target(const VImage &image, const Target &target) const {
         copy.write_to_buffer(extension.c_str(), &buf, &size, save_options);
 
         target.write(buf, size);
-        target.finish();
+        target.end();
 
         g_free(buf);
 #endif
     }
 }
 
-}  // namespace processors
-}  // namespace api
-}  // namespace weserv
+}  // namespace weserv::api::processors

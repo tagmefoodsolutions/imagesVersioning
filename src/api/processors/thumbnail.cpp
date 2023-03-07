@@ -7,9 +7,7 @@
 #include <string>
 #include <tuple>
 
-namespace weserv {
-namespace api {
-namespace processors {
+namespace weserv::api::processors {
 
 using enums::Canvas;
 using enums::ImageType;
@@ -135,8 +133,9 @@ std::pair<double, double> Thumbnail::resolve_shrink(int width,
                                                     int height) const {
     auto rotation = query_->get<int>("angle", 0);
     auto precrop = query_->get<bool>("precrop", false);
+    auto swap = !precrop && (rotation == 90 || rotation == 270);
 
-    if (!precrop && (rotation == 90 || rotation == 270)) {
+    if (swap) {
         // Swap input width and height when rotating by 90 or 270 degrees
         std::swap(width, height);
     }
@@ -172,7 +171,7 @@ std::pair<double, double> Thumbnail::resolve_shrink(int width,
                 }
                 break;
             case Canvas::IgnoreAspect:
-                if (!precrop && (rotation == 90 || rotation == 270)) {
+                if (swap) {
                     std::swap(hshrink, vshrink);
                 }
                 break;
@@ -205,7 +204,7 @@ std::pair<double, double> Thumbnail::resolve_shrink(int width,
     hshrink = std::min(hshrink, static_cast<double>(width));
     vshrink = std::min(vshrink, static_cast<double>(height));
 
-    return std::make_pair(hshrink, vshrink);
+    return std::pair{hshrink, vshrink};
 }
 
 double Thumbnail::resolve_common_shrink(int width, int height) const {
@@ -224,7 +223,7 @@ int Thumbnail::resolve_jpeg_shrink(int width, int height) const {
     int jpeg_shrink_on_load = 1;
 
     // Shrink-on-load is a simple block shrink and will
-    // add quite a bit of extra sharpness to the image.
+    // add quite a bit of extra sharpness to the image
     if (shrink >= 8 * shrink_on_load_factor) {
         jpeg_shrink_on_load = 8;
     } else if (shrink >= 4 * shrink_on_load_factor) {
@@ -244,7 +243,7 @@ int Thumbnail::resolve_jpeg_shrink(int width, int height) const {
 
 int Thumbnail::resolve_tiff_pyramid(const VImage &image, const Source &source,
                                     int width, int height) const {
-    // Note: This is checked against config_.max_pages in stream.cpp.
+    // Note: This is checked against config_.max_pages in stream.cpp
     int n_pages = image.get_typeof(VIPS_META_N_PAGES) != 0
                       ? image.get_int(VIPS_META_N_PAGES)
                       : 1;
@@ -283,7 +282,7 @@ int Thumbnail::resolve_tiff_pyramid(const VImage &image, const Source &source,
             target_page = i;
 
             // We may have found a pyramid, but we
-            // have to finish the loop to be sure.
+            // have to finish the loop to be sure
         }
     }
 
@@ -340,9 +339,9 @@ void Thumbnail::append_page_options(vips::VOption *options) const {
 VImage Thumbnail::shrink_on_load(const VImage &image,
                                  const Source &source) const {
     // Try to reload input using shrink-on-load, when:
-    //  - the width or height parameters are specified.
-    //  - gamma correction doesn't need to be applied.
-    //  - trimming isn't required.
+    //  - the width or height parameters are specified
+    //  - gamma correction doesn't need to be applied
+    //  - trimming isn't required
     if (query_->get<bool>("trim", false) ||
         query_->get<float>("gam", 0.0F) != 0.0F ||
         (query_->get<int>("w") == 0 && query_->get<int>("h") == 0)) {
@@ -377,8 +376,11 @@ VImage Thumbnail::shrink_on_load(const VImage &image,
         auto scale =
             1.0 / resolve_common_shrink(width, utils::get_page_height(image));
 
-        return new_from_source<ImageType::Webp>(
-            source, load_options->set("scale", scale));
+        // Avoid upsizing via libwebp
+        if (scale < 1.0) {
+            return new_from_source<ImageType::Webp>(
+                source, load_options->set("scale", scale));
+        }
     } else if (image_type == ImageType::Tiff) {
         auto page = resolve_tiff_pyramid(image, source, width, height);
 
@@ -413,7 +415,7 @@ VImage Thumbnail::shrink_on_load(const VImage &image,
                    : image;
     }
 
-    // Still here? The loader probably doesn't support shrink-on-load.
+    // Still here? The loader probably doesn't support shrink-on-load
 
     // Delete the options we allocated above
     delete load_options;
@@ -431,7 +433,7 @@ VImage Thumbnail::process(const VImage &image) const {
     auto page_height =
         query_->get<int>("page_height", utils::get_page_height(thumb));
 
-    // RAD needs special unpacking.
+    // RAD needs special unpacking
     if (thumb.coding() == VIPS_CODING_RAD) {
         // rad is scRGB
         thumb = thumb.rad2float();
@@ -460,7 +462,7 @@ VImage Thumbnail::process(const VImage &image) const {
     auto target_image_height = target_page_height;
 
     // In toilet-roll mode, we must adjust vshrink so that we exactly hit
-    // page_height or we'll have pixels straddling pixel boundaries.
+    // page_height, or we'll have pixels straddling pixel boundaries
     if (thumb_height > page_height) {
         auto n_pages = query_->get<int>("n");
         target_image_height *= n_pages;
@@ -501,7 +503,7 @@ VImage Thumbnail::process(const VImage &image) const {
 
     // Colour management.
     // If this is a CMYK image, just export. Otherwise, we're in
-    // device space and we need a combined import/export to transform to
+    // device space, and we need a combined import/export to transform to
     // the target space.
     if (is_cmyk) {
         thumb = thumb.icc_export(VImage::option()
@@ -520,6 +522,4 @@ VImage Thumbnail::process(const VImage &image) const {
     return thumb;
 }
 
-}  // namespace processors
-}  // namespace api
-}  // namespace weserv
+}  // namespace weserv::api::processors

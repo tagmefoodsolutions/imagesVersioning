@@ -21,7 +21,7 @@ TEST_CASE("query ignore", "[query]") {
 
     SECTION("default") {
         auto test_image = fixtures->input_png_pixel;
-        auto params = "default=ory.weserv.nl/lichtenstein.jpg";
+        auto params = "default=wsrv.nl/lichtenstein.jpg";
 
         Status status = process_file(test_image, nullptr, params);
 
@@ -31,7 +31,7 @@ TEST_CASE("query ignore", "[query]") {
 
     SECTION("errorredirect (deprecated)") {
         auto test_image = fixtures->input_png_pixel;
-        auto params = "errorredirect=ory.weserv.nl/lichtenstein.jpg";
+        auto params = "errorredirect=wsrv.nl/lichtenstein.jpg";
 
         Status status = process_file(test_image, nullptr, params);
 
@@ -51,7 +51,7 @@ TEST_CASE("query ignore", "[query]") {
 
     SECTION("url") {
         auto test_image = fixtures->input_png_pixel;
-        auto params = "url=ory.weserv.nl/lichtenstein.jpg";
+        auto params = "url=wsrv.nl/lichtenstein.jpg";
 
         Status status = process_file(test_image, nullptr, params);
 
@@ -68,5 +68,15 @@ TEST_CASE("query ignore", "[query]") {
 
         CHECK_THAT(image.get_string("vips-loader"), Equals("jpegload_buffer"));
         CHECK_THAT(image, is_similar_image(test_image));
+    }
+
+    // https://github.com/weserv/images/issues/358
+    SECTION("non-API key") {
+        auto test_image = fixtures->input_jpg;
+        auto params = "v=<UNIX_EPOCH>&w=200";
+
+        VImage image = process_file<VImage>(test_image, params);
+
+        CHECK(image.width() == 200);
     }
 }

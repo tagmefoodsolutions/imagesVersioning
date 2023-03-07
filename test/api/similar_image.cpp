@@ -1,13 +1,11 @@
 #include "similar_image.h"
 
+#include <array>
 #include <iomanip>
 
 VImage SimilarImage::normalize(const VImage &image) const {
     // Get original colorspace
     VipsInterpretation type_before_normalize = image.interpretation();
-    if (type_before_normalize == VIPS_INTERPRETATION_RGB) {
-        type_before_normalize = VIPS_INTERPRETATION_sRGB;
-    }
 
     // Convert to LAB colorspace
     VImage lab = image.colourspace(VIPS_INTERPRETATION_LAB);
@@ -57,6 +55,9 @@ std::string SimilarImage::dhash(const VImage &image) const {
     VImage thumbnail =
         image.thumbnail_image(9, thumbnail_options).copy_memory();
 
+    // Apply normalisation - stretch luminance to cover full dynamic range.
+    thumbnail = normalize(thumbnail);
+
     // Flatten it to mid-gray before generating a fingerprint.
     if (image.has_alpha()) {
         std::vector<double> background{128, 128, 128};  // #808080
@@ -65,14 +66,14 @@ std::string SimilarImage::dhash(const VImage &image) const {
             thumbnail.flatten(VImage::option()->set("background", background));
     }
 
-    thumbnail = normalize(thumbnail).colourspace(VIPS_INTERPRETATION_B_W)[0];
+    thumbnail = thumbnail.colourspace(VIPS_INTERPRETATION_B_W)[0];
 
-    auto dhash_image =
+    auto *dhash_image =
         static_cast<uint8_t *>(thumbnail.write_to_memory(nullptr));
 
     // Calculate dHash
-    auto hash = 0u;
-    auto bit = 1u;
+    auto hash = 0U;
+    auto bit = 1U;
 
     for (int y = 0; y < 8; ++y) {
         for (int x = 0; x < 8; ++x) {
@@ -86,7 +87,7 @@ std::string SimilarImage::dhash(const VImage &image) const {
             }
 
             // Prepare the next loop
-            bit <<= 1u;
+            bit <<= 1U;
         }
     }
 
@@ -115,7 +116,7 @@ int hex2int(char ch) {
 int SimilarImage::dhash_distance(const std::string &hash1,
                                  const std::string &hash2) const {
     // Nibble lookup table to reduce computation time, see
-    // https://stackoverflow.com/a/25808559/1480019
+    // https://stackoverflow.com/a/25808559
     static const std::array<uint8_t, 16> NIBBLE_LOOKUP = {
         0, 1, 1, 2, 1, 2, 2, 3,
         1, 2, 2, 3, 2, 3, 3, 4

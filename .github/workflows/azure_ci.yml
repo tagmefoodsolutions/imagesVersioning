@@ -17,11 +17,11 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          # TODO(kleisauke): Enable once tiffsave_target/magickload_source is supported
-          # - os: ubuntu-20.04
+          # TODO(kleisauke): Enable once magickload_source is supported
+          # - os: ubuntu-22.04
           #   libvips-version: master
-          - os: ubuntu-20.04
-            libvips-version: 8.12.2
+          - os: ubuntu-22.04
+            libvips-version: 8.14.1
             coverage: true
     steps:
       - uses: actions/checkout@v3
@@ -33,36 +33,27 @@ jobs:
           path: ~/vips
           key: ${{ matrix.libvips-version }}
       - name: Install dependencies
-        env:
-          DEBIAN_FRONTEND: noninteractive
-          APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE: 1
         run: |
           # for Test::Nginx
-          curl -sSL "https://openresty.org/package/pubkey.gpg" | sudo -E apt-key add -
-          echo "deb https://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
-          # add support for HEIC/AVIF images
-          sudo apt-add-repository -y "ppa:strukturag/libheif"
-          sudo apt-add-repository -y "ppa:strukturag/libde265"
-          # add support for saving GIF images
-          sudo apt-add-repository -y "ppa:lovell/cgif"
+          curl -fsSL https://openresty.org/package/pubkey.gpg | sudo gpg --dearmor -o /usr/share/keyrings/openresty.gpg
+          echo "deb [signed-by=/usr/share/keyrings/openresty.gpg] https://openresty.org/package/ubuntu $(lsb_release -sc) main" | \
+            sudo tee /etc/apt/sources.list.d/openresty.list > /dev/null
           # install dependencies
           sudo apt-get update
-          sudo -E apt-get install -y \
+          sudo apt-get install \
+            meson \
             libcgif-dev libexif-dev libexpat1-dev \
-            libfftw3-dev libgsf-1-dev libheif-dev \
-            libimagequant-dev liblcms2-dev libmagickwand-dev \
-            liborc-0.4-dev libpango1.0-dev libpng-dev \
-            libpoppler-glib-dev librsvg2-dev libtiff5-dev \
-            libwebp-dev \
-            gtk-doc-tools gobject-introspection \
-            libtest-nginx-perl \
-            lcov
+            libheif-dev libimagequant-dev liblcms2-dev \
+            libmagickcore-dev liborc-0.4-dev libpango1.0-dev \
+            libpng-dev libpoppler-glib-dev librsvg2-dev \
+            libtiff5-dev libwebp-dev \
+            libtest-nginx-perl
       - name: Install libvips
         if: steps.cache-libvips.outputs.cache-hit != 'true'
         env:
           VIPS_VERSION: ${{ matrix.libvips-version }}
           VIPS_PRE_VERSION: ${{ matrix.libvips-pre-version }}
-        run: .ci/install-vips.sh --disable-deprecated
+        run: .ci/install-vips.sh -Ddeprecated=false -Dintrospection=false
       - name: Prepare environment
         run: |
           echo "$HOME/vips/bin" >> $GITHUB_PATH
@@ -88,18 +79,15 @@ jobs:
         env:
           TEST_NGINX_SERVROOT: ${{ github.workspace }}/servroot
         run: prove -r test/nginx
-      - name: Generate coverage report
-        if: matrix.coverage
-        working-directory: build
-        run: cmake --build . --target coverage
       - name: Upload coverage to Codecov
         if: matrix.coverage
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
-          file: build/coverage.info
+          gcov: true
+          gcov_ignore: test/api
   docker-publish:
     needs: CI
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
         with:
